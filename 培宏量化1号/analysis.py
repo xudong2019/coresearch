@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[55]:
+# In[30]:
 
 
 strategy_name = '培宏量化1号'
 
 
-# In[56]:
+# In[31]:
 
 
 #%load_ext line_profiler
@@ -65,13 +65,13 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[57]:
+# In[32]:
 
 
 maxD = 4
 
 
-# In[58]:
+# In[33]:
 
 
 dd = list(dbt.minuteBarStock.find({'ticker':'SH601988', 'dateAsInt':{'$gte':int(20200106), '$lte':int(20200109)}}, {'dateTime':1}))
@@ -95,7 +95,7 @@ t = np.round(np.array(sorted(list(set([x - int(x) for x in timeAsFloat])))), 6)
 maxM = t.shape[0] * maxD
 
 
-# In[59]:
+# In[34]:
 
 
 trades = list(db.strategyBackTestTrades.find({'strategy_name':strategy_name}))
@@ -147,7 +147,7 @@ Po = np.array(Po)
 #Pc = np.array(Pc)
 
 
-# In[60]:
+# In[35]:
 
 
 #x = [str(x) for x in dateLabel]
@@ -155,14 +155,14 @@ Po = np.array(Po)
 #dLabel = np.array([datetime.datetime.strptime(str(int(float(d)*1e4)), '%H%M').date() for d in x])
 
 
-# In[61]:
+# In[36]:
 
 
 r=Po[:,1:]/Po[:,:-1] - 1
 r=np.hstack((np.zeros((r.shape[0],1)),r))
 
 
-# In[62]:
+# In[37]:
 
 
 tradeArea=[240,604]
@@ -196,43 +196,37 @@ rschLib.drawPriceChange(rBad2, strategy_name, timeLabels=timeLabels, title='亏�
 rschLib.drawPriceChange(rBad3, strategy_name, timeLabels=timeLabels, title='亏损前30%交易', tp=tradeArea)
 
 
-# In[63]:
+# In[38]:
 
 
 inTime = 240
 otTime = 604
 
 
-# In[64]:
+# In[39]:
 
 
 importlib.reload(rschLib)
 [dtesPnl,pnl,numTrades]=rschLib.getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat, toDatabase='yes')
 
 
-# In[65]:
+# In[40]:
 
 
 importlib.reload(rschLib)
 rschLib.pnlVsNumtrades(pnl, numTrades)
 
 
-# In[66]:
+# In[41]:
 
 
 rschLib.drawPNL(dtesPnl, pnl, dtes, strategy_name, toDatabase='yes')
 
 
-# In[67]:
+# In[42]:
 
 
 #%lprun -f getPnl getPnl()
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:

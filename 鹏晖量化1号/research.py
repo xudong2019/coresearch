@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[22]:
+# In[38]:
 
 
 strategy_name ='鹏晖量化1号'
 
 
-# In[23]:
+# In[39]:
 
 
 import sys
@@ -34,21 +34,21 @@ client = pymongo.MongoClient('localhost', 27017)
 db = client.quanLiang
 
 
-# In[24]:
+# In[40]:
 
 
 #参数：
 startDate = 20190101
 
 
-# In[25]:
+# In[41]:
 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
 
-# In[26]:
+# In[42]:
 
 
 plt.rcParams['font.sans-serif'] = [u'SimHei']
@@ -57,7 +57,7 @@ default_dpi = plt.rcParamsDefault['figure.dpi']
 plt.rcParams['figure.dpi'] = default_dpi*1
 
 
-# In[27]:
+# In[43]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -83,6 +83,12 @@ shenwan2 = z['shenwan2']
 shenwan3 = z['shenwan3']
 vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
+
+
+# In[44]:
+
+
+dtes[-1]
 
 
 # In[28]:

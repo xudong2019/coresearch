@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[102]:
+# In[1]:
 
 
 strategy_name ='培宏量化1号'
 
 
-# In[103]:
+# In[2]:
 
 
 import sys
@@ -35,7 +35,7 @@ db = client.quanLiang
 dbt = client.tinySoftData
 
 
-# In[104]:
+# In[3]:
 
 
 def nowTime():
@@ -46,7 +46,7 @@ nowTime()
 nowString()
 
 
-# In[105]:
+# In[4]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -74,7 +74,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[106]:
+# In[5]:
 
 
 v = pd.DataFrame(vol_mtx)
@@ -84,13 +84,13 @@ lb=vol_mtx[:, -1]/q[:,-2]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[111]:
+# In[24]:
 
 
 Wl = 500 # 当天收盘价格位于Wl日内的高低点相对位置
-preHighL = np.max(high_mtx[:, -Wl:], axis=1)
-preLowL = np.min(low_mtx[:, -Wl:], axis=1)
-priceLocL = (close_mtx[:,-1]-preLowL)/(preHighL-preLowL)
+preHighL = np.max(high_mtx[:, -Wl:-1], axis=1)
+preLowL = np.min(low_mtx[:, -Wl:-1], axis=1)
+priceLocL = (close_mtx[:,-2]-preLowL)/(preHighL-preLowL)
 # 1. 价格位置
 idxPriceLoc = priceLocL < 0.5
 namePriceLoc = name[idxPriceLoc]
@@ -103,7 +103,7 @@ nameMarketValue = [x['name'] for x in list(db.tkrsInfo.find({'tagCirculateMarket
 nameIsUp = name[close_mtx[:, -1]>open_mtx[:, -1]]
 
 
-# In[112]:
+# In[25]:
 
 
 m = set(namePriceLoc).intersection(set(nameMarketValue)).intersection(set(nameTiaoKongGaoKai)).intersection(set(nameIsUp))

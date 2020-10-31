@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[124]:
+# In[22]:
 
 
 strategy_name ='培宏量化1号'
 
 
-# In[125]:
+# In[23]:
 
 
 import sys
@@ -35,21 +35,21 @@ db = client.quanLiang
 dbt = client.tinySoftData
 
 
-# In[126]:
+# In[24]:
 
 
 #参数：
 startDate = 20180101
 
 
-# In[127]:
+# In[25]:
 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
 
-# In[128]:
+# In[26]:
 
 
 plt.rcParams['font.sans-serif'] = [u'SimHei']
@@ -58,7 +58,7 @@ default_dpi = plt.rcParamsDefault['figure.dpi']
 plt.rcParams['figure.dpi'] = default_dpi*1
 
 
-# In[129]:
+# In[27]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -86,7 +86,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[130]:
+# In[28]:
 
 
 v = pd.DataFrame(vol_mtx)
@@ -97,27 +97,20 @@ lb[:,1:]=vol_mtx[:, 1:]/q[:,:-1]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[131]:
-
-
-list(tkrs).index('SZ300119')
-lb[3862,:]
-
-
-# In[132]:
+# In[30]:
 
 
 idxTiaoKongGaoKai = np.hstack((np.zeros((open_mtx.shape[0],1))==1,((open_mtx[:,1:] / high_mtx[:,:-1]) - 1 > 0.01)))
 
 
-# In[133]:
+# In[31]:
 
 
 name = list(name)
 tkrs = list(tkrs)
 
 
-# In[134]:
+# In[32]:
 
 
 Ns = 10 # 取每天量比的前多少名
@@ -134,7 +127,7 @@ idxZhangtingAtOpen = np.array(np.zeros(close_mtx.shape), dtype='bool') # 开盘�
 idxZhangtingAtClose[:, 1:] = (close_mtx[:, 1:] / close_mtx[:, :-1] - 1) > 0.095
 idxZhangtingAtOpen[:, 1:] = (open_mtx[:, 1:] / close_mtx[:, :-1] - 1) > 0.095
 
-for k in range(1,close_mtx.shape[1]):
+for k in range(1,close_mtx.shape[1]):    
     #长期价格位置
     q = np.max((0, k-Wl))
     preHighL[:, k] = np.max(high_mtx[:, q:k], axis=1)
@@ -145,11 +138,10 @@ for k in range(1,close_mtx.shape[1]):
     preHighS[:, k] = np.max(high_mtx[:, q:k], axis=1)
     preLowS[:, k] = np.min(low_mtx[:, q:k], axis=1)
     priceLocS[:, k] = (close_mtx[:,k-1]-preLowS[:,k])/(preHighS[:,k]-preLowS[:,k])
-
     
 
 
-# In[135]:
+# In[33]:
 
 
 q = list(db.tkrsInfo.find({},{
@@ -188,7 +180,7 @@ for x in q:
         cmv2020[list(tkrs).index(x['ticker'])]=x['circulateMarketValue20200101']
 
 
-# In[145]:
+# In[68]:
 
 
 cmv_threshold = 100e4
@@ -199,98 +191,27 @@ q = [list(tkrs).index(x) for x in wants]
 idxT = [x in q for x in range(len(tkrs))]
 
 
-# In[146]:
+# In[69]:
 
 
 idxNST = [('ST' in x)==False for x in name]
 
 
-# In[147]:
+# In[70]:
 
 
 startDate = 20180101
 
 
-# In[163]:
+# In[71]:
 
 
-qt
+tkrs.index('SH600420')
+idxT[544]
+print(priceLocL[544,-1],preLowL[544,-1], preHighL[544,-1],close_mtx[544,-1])
 
 
-# In[161]:
-
-
-
-for x in qt:
-    if (x['sale1']==0):
-        print('忽略涨停股：',x['StockName'],dtes[k], x['dateTime'])
-        continue
-    if (x['close']/x['sectional_open']-1 < 0):
-        continue
-    if (k<sp) & (idxZhangtingAtOpen[ll.index(x['ticker']), np.min((k+1, sp))]==True):
-        print(x['ticker'], dtes[k],' 第二日开盘涨停不买')
-        continue
-    if x['ticker'] in qs:
-        continue
-    q.append(x)
-    qs.append(x['ticker'])
-if (len(q)==0):
-    continue
-mk = [x['ticker'] for x in q]
-q0 = list(dbt.minuteBarStock.find({'ticker':{'$in': mk},'dateAsInt':int(dtes[k]),"offSetFromMidNight" : 34260000}, {'ticker':1, 'close':1, 'lb':1}))
-qc = list(dbt.minuteBarStock.find({'ticker':{'$in': mk},'dateAsInt':int(dtes[k]),"offSetFromMidNight" : 53940000}, {'ticker':1, 'close':1, 'lb':1}))
-m0 = [x['ticker'] for x in q0]
-mc = [x['ticker'] for x in qc]
-index0 = [m0.index(x) for x in mk]
-indexc = [mc.index(x) for x in mk]
-close0930 = np.array([x['close'] for x in q0])[index0]
-close1500 = np.array([x['close'] for x in qc])[indexc]
-close0935  = np.array([x['close'] for x in q])
-sn = [x['ticker'] for x in q]
-idx = [ll.index(x['ticker']) for x in q]
-lbm = np.array([x['lb'] for x in q])
-pLocL = priceLocL[idx, k]
-pLocS = priceLocS[idx, k]
-close_today = close_mtx[idx, k]  # 今天收盘
-open_today = open_mtx[idx, k]    # 今天开盘
-close_tomorrow = close_mtx[idx, np.min((k+1,sp))] # 明天收盘
-if k+1<sp: # 明天开盘
-    open_tomorrow = open_mtx[idx, k+1]
-else:
-    open_tomorrow = close_mtx[idx, sp]
-if k+2<sp:
-    open_p3 = open_mtx[idx, k+2]   # 后天开盘
-else:
-    open_p3 = close_mtx[idx, sp]   # 后天开盘
-close_p3 = close_mtx[idx, np.min((k+2,sp))]  # 后天收盘
-close_yesterday = close_mtx[idx, k-1]
-close_yesterday2 = close_mtx[idx, k-2]
-isZhangTing = idxZhangtingAtClose[idx, k]
-
-# r1: 第一天入场到收盘
-# r2: 第一天收盘到第二天开盘
-# r3: 第二天开盘到第二天收盘
-# r4: 第二天收盘到第三天开盘
-# r5: 第三天开盘到第三天收盘
-r1 = np.mean(close1500/close0935 - 1)
-r2 = np.mean(open_tomorrow/close_today  - 1)
-r3 = np.mean(close_tomorrow/open_tomorrow - 1)
-r4 = np.mean(open_p3/close_tomorrow - 1)
-r5 = np.mean(close_p3/open_p3 - 1)
-pnl1.append(r1)
-pnl2.append(r2)
-pnl3.append(r3)
-pnl4.append(r4)
-pnl5.append(r5)
-tradesCount.append(len(close1500))
-dtesUsed.append(dtes[k])
-for (iq,t) in enumerate(sn):
-    s = nn[ll.index(t)] + ','+str(dtes[k])+',量比,'+str(np.round(lbm[iq]))+    ',价格位置（长期),'+str(np.round(1e4*pLocL[iq])/1e2)+    ',价格位置（短期),'+str(np.round(1e4*pLocS[iq])/1e2)+    ',cmv2019,'+str(cmv2019[ll.index(t)])+    ',cmv2020,'+str(cmv2020[ll.index(t)])+    ',cmv2018,'+str(cmv2018[ll.index(t)])+    ',第一天涨幅,'+str(close_today[iq]/close_yesterday[iq]-1)+    ',开盘涨幅（9:30-9:35）,'+str(close0935[iq]/close0930[iq]-1)+    ',入场后到收盘,'+str(close_today[iq]/close0935[iq]-1)+    ',第二天开盘涨幅,'+str(open_tomorrow[iq]/close_today[iq]-1)+    ',第二天日内涨幅,'+str(close_tomorrow[iq]/open_tomorrow[iq]-1)+    ',第二天收盘至第三天开盘,'+str(open_p3[iq]/close_tomorrow[iq]-1)+    ',第三天开盘至收盘,'+str(close_p3[iq]/open_p3[iq]-1)+    ',昨日涨幅,'+str(close_yesterday[iq]/close_yesterday2[iq]-1)+    ',跳空高开幅度,'+str(open_today[iq]/close_yesterday[iq]-1)+    ',买入价,'+str(open_tomorrow[iq])+    ',卖出价,'+str(close_p3[iq])+    ',利润,'+str(close_p3[iq]/open_tomorrow[iq]-1)+    ',是否涨停,'+str(isZhangTing[iq])
-    f.write(s+'\n')
-    print(nn[ll.index(t)] + ','+str(dtes[k])+',量比,'+str(np.round(lbm[iq]))+',进场价格:'+str(open_tomorrow[iq])+',出场价格:'+str(close_p3[iq])+',利润,'+str(close_p3[iq]/open_tomorrow[iq]-1))
-
-
-# In[148]:
+# In[72]:
 
 
 priceLocThrsMin = 0.1 # 价格大于近期的priceLocthrsMin位置
@@ -401,7 +322,7 @@ for k in range(k0, close_mtx.shape[1]):
 f.close()
 
 
-# In[149]:
+# In[73]:
 
 
 pnl1 = np.array(pnl1)
@@ -416,13 +337,13 @@ pnl4[np.isfinite(pnl4)==False]=0
 pnl5[np.isfinite(pnl5)==False]=0
 
 
-# In[150]:
+# In[74]:
 
 
 plt.plot(tradesCount)
 
 
-# In[151]:
+# In[75]:
 
 
 plt.plot(dtes2Label(dtesUsed), np.cumsum(pnl1), 'k')
@@ -434,10 +355,16 @@ plt.legend(['第一天入场到第一天收盘', '第一天收盘到第二天开
 plt.grid()
 
 
-# In[152]:
+# In[76]:
 
 
 rschLib.drawPNL(dtesUsed, pnl3+pnl4+pnl5,  dtes, strategy_name, toDatabase='yes')
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
