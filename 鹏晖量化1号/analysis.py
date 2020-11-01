@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[91]:
 
 
 strategy_name = '鹏晖量化1号'
 
 
-# In[2]:
+# In[92]:
 
 
 import sys
@@ -59,19 +59,19 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[3]:
+# In[93]:
 
 
 dtes[-1]
 
 
-# In[47]:
+# In[94]:
 
 
 maxD = 3
 
 
-# In[48]:
+# In[95]:
 
 
 dd = list(dbt.minuteBarStock.find({'ticker':'SH601988', 'dateAsInt':{'$gte':int(20200106), '$lte':int(20200109)}}, {'dateTime':1}))
@@ -95,7 +95,7 @@ t = np.round(np.array(sorted(list(set([x - int(x) for x in timeAsFloat])))), 6)
 maxM = t.shape[0] * maxD
 
 
-# In[49]:
+# In[96]:
 
 
 trades = list(db.strategyBackTestTrades.find({'strategy_name':strategy_name}))
@@ -143,7 +143,7 @@ for (i,x) in enumerate(trades):
     #Pc.append(m)
 
 
-# In[50]:
+# In[97]:
 
 
 Po = np.array(Po)
@@ -152,7 +152,7 @@ Po = np.array(Po)
 #Pc = np.array(Pc)
 
 
-# In[51]:
+# In[98]:
 
 
 #x = [str(x) for x in dateLabel]
@@ -160,28 +160,73 @@ Po = np.array(Po)
 #dLabel = np.array([datetime.datetime.strptime(str(int(float(d)*1e4)), '%H%M').date() for d in x])
 
 
-# In[52]:
+# In[99]:
 
 
 r=Po[:,1:]/Po[:,:-1] - 1
 r=np.hstack((np.zeros((r.shape[0],1)),r))
 
 
-# In[ ]:
+# In[100]:
 
 
 inTime = 241
 otTime = 505
 
 
-# In[68]:
+# In[101]:
 
 
 tradeArea=[inTime,otTime]
 
 
-# In[69]:
+# In[102]:
 
+
+with open(r"d:\pkl\TagTiaoKongGaoKai.pkl", 'rb+') as f:
+    z = pickle.load(f)
+
+
+# In[103]:
+
+
+tagTiaoKongGaoKai = z['tag_mtx']
+
+
+# In[104]:
+
+
+idxGood1
+
+
+# In[105]:
+
+
+checkIdx = idxGood1
+totInTag = 0
+for i in checkIdx:
+    b = list(dtes).index(trades[i]['dateIn'])
+    a = list(name).index(trades[i]['name'])
+    if tagTiaoKongGaoKai[a,b]==1:
+        totInTag = totInTag +1
+print(totInTag)
+
+
+# In[46]:
+
+
+idxGood1 = np.nonzero(p>=u)[0]
+idxGood1
+
+
+# In[36]:
+
+
+rGood.shape
+plt.plot(np.cumsum(rGood[2,:]))
+
+
+# In[32]:
 
 
 h = np.max(np.cumsum(r[:, :tradeArea[0]], axis=1), axis=1)
@@ -194,11 +239,17 @@ l = np.quantile(p,0.1)
 l2 = np.quantile(p,0.2)
 l3 = np.quantile(p,0.3)
 rGood = r[p>=u,:]
+idxGood1 = np.nonzero(p>=u)[0]
 rGood2 = r[p>=u2,:]
+idxGood2 = np.nonzero(p>=u2)[0]
 rGood3 = r[p>=u3,:]
+idxGood3 = np.nonzero(p>=u3)[0]
 rBad = r[p<=l, :]
+idxBad1 = np.nonzero(p<=l)[0]
 rBad2 = r[p<=l2, :]
+idxBad2 = np.nonzero(p<=l2)[0]
 rBad3 = r[p<=l3, :]
+idxBad3 = np.nonzero(p<=l3)[0]
 #for (i,x) in enumerate(tradesUsed):
 #    if p[i]>u:
 #        print('good trade:', x['name'], x['dateIn'],p[i],isZhangtingBeforeTradeArea[i])
