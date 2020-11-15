@@ -7,6 +7,13 @@ import matplotlib.dates as mdates
 import pymongo
 import datetime
 
+def np_fill_zero(array: np.array) -> np.array:
+    """矩阵nan和inf填0
+    """
+    array[np.isinf(array)] = 0
+    array[np.isnan(array)] = 0
+    return array
+
 def zero2pre(M):
     for i in range(M.shape[0]):
         for j in range(1,M.shape[1]):
@@ -61,17 +68,26 @@ def drawPriceChange(r, strategy_name, timeLabels, title='priceChange', tp=[240,6
         title: list(np.cumsum(priceChange)),
         title+'Std': list(priceChangeStd),
         'concernPoints': tp,
-        'priceType': '开盘价'
+        'priceType': '开盘价',
+        '买入时间': timeLabels[tp[0]],
+        '卖出时间': timeLabels[tp[1]],
+    }},upsert=True)
+    db.strategyBackTest.update_one({'strategy_name':strategy_name}, {'$set':{
+        '买入时间': timeLabels[tp[0]],
+        '卖出时间': timeLabels[tp[1]],
     }},upsert=True)
 
-def getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat,  toDatabase='no'):
+def getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat,  toDatabase='no', strategy_name='交易明细'):
     client = pymongo.MongoClient('localhost', 27017)
+    timeAsFloatArr = np.array(timeAsFloat)
+    f = open(strategy_name+"交易明细.txt", "w")
     db = client.quanLiang
     dbt = client.tinySoftData
     dd = list(dtes)
     nn = list(name)
-    pnl = []
-    dtesPnl = []
+    pnl = np.zeros(len(trades))
+    dtesPnl = np.zeros(len(trades))
+    print(len(dtesPnl))
     l = [x['dateIn'] for x in trades]
     c = {}
     for q in l:
@@ -80,9 +96,12 @@ def getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat,  toData
         inPosition = 1
         otPosition = 1
         n = t['name']
+        dtesPnl[i]= t['dateIn']
         j = dd.index(t['dateIn'])
         jin = j + dayOff[inTime]
         jot = j + dayOff[otTime]
+        if (i%10000==0):
+            print('getPnl() at ', i,'/', len(trades))
         if (jin>=len(dtes)):
             din = '-1'
             dot = '-1'
@@ -95,13 +114,13 @@ def getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat,  toData
             'open':float(-1.0),
             }
         else:
-            din = dtes[jin]+timeAsFloat[inTime]
+            din = dtes[jin]+timeAsFloatArr[inTime]
             dtIn=datetime.datetime.strptime(str(din), '%Y%m%d.%H%M')+datetime.timedelta(hours=-8)
             q1 = dbt.minuteBarStock.find_one({'ticker':tkrs[nn.index(n)], 'dateTime':dtIn},{'ticker':1, 'name':1, 'close':1,'open':1})
-            print(q1)
             if q1==None:
                 q1={'open':float(-1)}
                 q2={'open':float(-1)}
+                dot=-1
             else:
                 if (jot>=len(dtes)):
                     dot = '-1'
@@ -110,18 +129,18 @@ def getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat,  toData
                         'open':q1['open']
                     }
                 else:
-                    dot = dtes[jot]+timeAsFloat[otTime]
+                    dot = dtes[jot]+timeAsFloatArr[otTime]
                     dtOt=datetime.datetime.strptime(str(dot), '%Y%m%d.%H%M')+datetime.timedelta(hours=-8)
                     q2 = dbt.minuteBarStock.find({'ticker':tkrs[nn.index(n)], 'dateTime':{'$gte':dtOt}},{'ticker':1, 'name':1, 'close':1,'open':1}).limit(1)[0]
-                    print(q2)
                     if q2==None:
                         q2={
                             'open':q1['open']
                         }
         r = q2['open']/q1['open']-1
-        print(t['dateIn'], n, din, '价',q1['open'], dot,'价',q2['open'],'利润',np.round(r*1e4)/1e2,'%', '已经开仓', inPosition, '已经平仓', otPosition)
-        pnl.append(r)
-        dtesPnl.append(t['dateIn'])
+        s= str(t['dateIn'])+' '+str(n)+' '+str(din)+' '+str(q1['open'])+' '+str(dot)+' '+str(q2['open'])+' 利润 '+' '+str(np.round(r*1e4)/1e2)+'% 已经开仓'+' '+str(inPosition)+' 已经平仓'+' '+str(otPosition)+'\n'
+        f.write(s)
+        #print(t['dateIn'], n, din, '价',q1['open'], dot,'价',q2['open'],'利润',np.round(r*1e4)/1e2,'%', '已经开仓', inPosition, '已经平仓', otPosition)
+        pnl[i]=r
         if (toDatabase == 'yes'):
             db.strategyBackTestTrades.update_one({
                         '_id':t['_id']}, {'$set':{
@@ -134,25 +153,31 @@ def getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat,  toData
                         '已经平仓':int(otPosition)
                         }
                         })
-    dq = []
-    pq = []
-    nq = []
-    pnl = np.array(pnl)
-    dtesPnl = np.array(dtesPnl)
+    f.close()
+    return dtesPnl, pnl
+
+#dtesPnl和pnl的尺寸与trades一致，  而dtesAggr, pnlAggr, numTrades为相同日期按等权重配比计算。
+def aggregatePnlAndDtes(dtesPnl, pnl):
+    dtesAggr = []
+    pnlAggr = []
+    numTrades = []
     for x in sorted(set(dtesPnl)):
-        dq.append(x)
-        nq.append(np.sum(dtesPnl==x))
-        pq.append(np.mean(pnl[dtesPnl==x]))
-    return dq,pq,nq
+        dtesAggr.append(x)
+        numTrades.append(np.sum(dtesPnl==x))
+        pnlAggr.append(np.mean(pnl[dtesPnl==x]))
+    return dtesAggr,pnlAggr,numTrades, 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
-def drawPNL(dtesPnl,pnl,dtes, strategy_name, toDatabase='no'):
+def drawPNL(dtesPnl,pnl,dtes, strategy_name, toDatabase='no', dateStart=-1, pnlType='pnl'):
     client = pymongo.MongoClient('localhost', 27017)
     db = client.quanLiang
     dbt = client.tinySoftData
-    s1 = np.nonzero(dtes>=dtesPnl[0])[0][0]
+    if dateStart==-1:
+        s1 = np.nonzero(dtes>=dtesPnl[0])[0][0]
+    else:
+        s1 = np.nonzero(dtes>=dateStart)[0][0]
     #s2 = np.nonzero(dtes<=dtesPnl[-1])[0][-1]
     d = dtes[s1:]
     r = np.zeros(d.shape)
@@ -167,14 +192,20 @@ def drawPNL(dtesPnl,pnl,dtes, strategy_name, toDatabase='no'):
     v = np.std(r)
     v2 = np.std(r[r!=0])
     s = m/v*np.sqrt(250)
-    plt.grid()      
+    plt.grid()
     plt.gcf().autofmt_xdate()  # 自动旋转日期标记
-    plt.title('策略平均日回报率:'+str(np.round(m*1e4)/1e2)+'%, 平均每笔交易回报率:'+str(np.round(m2*1e4)/1e2)\
+    plt.title(strategy_name + ' '+pnlType+' 策略平均日回报率:'+str(np.round(m*1e4)/1e2)+'%, 平均每笔交易回报率:'+str(np.round(m2*1e4)/1e2)\
               +'%,平均波动:'+str(np.round(v,2)*1e2)+'%, 平均每笔交易波动率:'+str(np.round(v2,2)*1e2)+'%, sharpe值:'+str(np.round(s,2)))
     if (toDatabase=='yes'):
-        db.strategyBackTest.update_one({'strategy_name':strategy_name},{'$set':{'labels':list([int(x) for x in d]),'pnl':list(np.cumsum(r))}},upsert=True)
+        if pnlType=='pnl':
+            db.strategyBackTest.update_one({'strategy_name':strategy_name},{'$set':{'labels':list([int(x) for x in d]),'pnl':list(np.cumsum(r))}},upsert=True)
+        else:
+            db.strategyBackTest.update_one({'strategy_name':strategy_name},{'$set':{pnlType:list(np.cumsum(r))}},upsert=True)
 
-def pnlVsNumtrades(pnl, numTrades, toDatabase='no'):
+def pnlVsNumtrades(pnl, numTrades, strategy_name, toDatabase='no'):
+    client = pymongo.MongoClient('localhost', 27017)
+    db = client.quanLiang
+    dbt = client.tinySoftData
     plt.figure()
     q = {}
     for x in set(numTrades):
@@ -184,4 +215,220 @@ def pnlVsNumtrades(pnl, numTrades, toDatabase='no'):
     plt.grid()
     plt.title('成交笔数与平均回报率关系')
     if (toDatabase=='yes'):
-        db.strategyBackTest.update_one({'strategy_name':strategy_name},{'$set':{'numTrades':list(numTrades),'pnl':list(np.cumsum(r))}},upsert=True)
+        db.strategyBackTest.update_one({'strategy_name':strategy_name},{'$set':{
+        'spnlVsNumtrades':{
+            'xlabel': '参与每笔交易的股票数目',
+            'ylabel': '平均回报率',
+            'numTrades':list([int(x) for x in numTrades]),
+            'pnl':list([int(x) for x in pnl]),
+            'x':list([int(x) for x in q.keys()]),
+            'y':list([float(x) for x in q.values()])
+            }
+        }},upsert=True)
+
+#返回价格矩阵
+def loadDailyBarMtx():
+    with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
+        z = pickle.load(f)
+    dtes = z['dtes']
+    dtes = np.array(dtes).astype(np.int)
+    tkrs = list(z['tkrs'])
+    open_mtx = z['open_mtx']
+    high_mtx = z['high_mtx']
+    low_mtx = z['low_mtx']
+    close_mtx = z['close_mtx']
+    k = close_mtx==0
+    close_mtx = zero2pre(close_mtx)
+    open_mtx[k]=close_mtx[k]
+    high_mtx[k]=close_mtx[k]
+    low_mtx[k]=close_mtx[k]
+    name = z['name']
+    belong = z['belong']
+    shenwan1 = z['shenwan1']
+    shenwan2 = z['shenwan2']
+    shenwan3 = z['shenwan3']
+    vol_mtx  = z['vol_mtx']
+    amount_mtx = z['amount_mtx']
+    return dtes, tkrs, name, open_mtx, high_mtx, low_mtx, close_mtx,belong, shenwan1, shenwan2, shenwan3, vol_mtx, amount_mtx
+
+#返回时间标签
+def getTimeLabels(maxD=3):
+    client = pymongo.MongoClient('localhost', 27017)
+    dbt = client.tinySoftData
+    dd = list(dbt.minuteBarStock.find({'ticker':'SH601988', 'dateAsInt':{'$gte':int(20200106), '$lte':int(20200109)}}, {'dateTime':1}))
+    timeAsFloat = []
+    for x in dd:
+        l  = str(x['dateTime']+datetime.timedelta(hours=8))
+        dl = float(l[0:4]+l[5:7]+l[8:10]+'.'+l[11:13]+l[14:16]+l[17:19])
+        timeAsFloat.append(dl)
+    timeAsFloat=np.round(np.array(sorted(list(set([x - int(x) for x in timeAsFloat])))), 6)
+    timeLabels = []
+    dayOff = []
+    for i in range(maxD):
+        for x in timeAsFloat:
+            s = str(int(x*1e4))
+            if len(s)<4:
+                s='0'+s
+            timeLabels.append('第'+str(i+1)+'天'+s[:2]+':'+s[2:4])
+            dayOff.append(i)
+    timeAsFloat = list(timeAsFloat)*maxD
+    t = np.round(np.array(sorted(list(set([x - int(x) for x in timeAsFloat])))), 6)
+    maxM = t.shape[0] * maxD
+    return timeAsFloat,timeLabels,maxM,dayOff
+    
+#获得交易列表
+def getTrades(strategy_name, name, tkrs, dtes, maxD, maxM):
+    client = pymongo.MongoClient('localhost', 27017)
+    db = client.quanLiang
+    dbt = client.tinySoftData
+    listdtes = list(dtes)
+    trades = list(db.strategyBackTestTrades.find({'strategy_name':strategy_name}))
+    tradesUsed = []
+    Po = []
+    Ph = []
+    Pl = []
+    Pc = []
+    for (i,x) in enumerate(trades):
+        if (x['name'] in list(name))==False:
+            continue
+        p = list(name).index(x['name'])
+        ticker = tkrs[p]
+        d0 = x['dateIn']
+        q = listdtes.index(d0)
+        j = np.min((q+maxD, dtes.shape[0]-1))
+        d1 = dtes[j]
+        findCache = db.cache.find_one({'ticker':ticker, 'cacheKey':str(d0)+str(d1)})
+        if (findCache==None):
+            dd = list(dbt.minuteBarStock.find({'ticker':ticker, 'dateAsInt':{'$gte':int(d0), '$lt':int(d1)}}, {'open':1, 'dateTime':1}).sort([('dateTime',1)]))
+            if dd==[]:
+                continue
+            else:
+                db.cache.insert_one({'ticker':ticker, 'cacheKey':str(d0)+str(d1), 'value':dd})
+        else:
+            dd = findCache['value']
+        tradesUsed.append(x)
+        q = np.array([x['open'] for x in dd])
+        if (i%1e4==0):
+            print(i, '/', len(trades),len(q),dd[0]['dateTime'],dd[-1]['dateTime'])
+        z = np.min((len(q),maxM))
+        m = np.zeros(maxM)
+        m[:z] = q[:z]
+        m[z:] = m[z-1]
+        Po.append(m)
+        #q = np.array([x['high'] for x in dd])
+        #z = np.min((len(q),maxM))
+        #m = np.zeros(maxM)
+        #m[:z]=q[:z]
+        #m[z:]=m[z-1]
+        #Ph.append(m)
+        #q = np.array([x['low'] for x in dd])
+        #z = np.min((len(q),maxM))
+        #m = np.zeros(maxM)
+        #m[:z]=q[:z]
+        #m[z:]=m[z-1]
+        #Pl.append(m)
+        #q = np.array([x['close'] for x in dd])
+        #z = np.min((len(q),maxM))
+        #m = np.zeros(maxM)
+        #m[:z]=q[:z]
+        #m[z:]=m[z-1]
+        #Pc.append(m)
+    Po = np.array(Po)
+    r=Po[:,1:]/Po[:,:-1] - 1
+    r=np.hstack((np.zeros((r.shape[0],1)),r))
+    #返回所有交易，有分钟数据交易，开盘价, 回报率
+    return trades, tradesUsed, Po, r
+ 
+# 获得交易结果样本分析列表
+def getTradeAnalysisSampleGroups(r, tradeArea):
+    p = np.sum(r[:, tradeArea[0]:tradeArea[1]], axis=1)
+    u = np.quantile(p,0.9)
+    u2 = np.quantile(p,0.8)
+    u3 = np.quantile(p,0.7)
+    l = np.quantile(p,0.1)
+    l2 = np.quantile(p,0.2)
+    l3 = np.quantile(p,0.3)
+    rGood10 = r[p>=u,:]
+    idxGood10 = np.nonzero(p>=u)[0]
+    rGood20 = r[p>=u2,:]
+    idxGood20 = np.nonzero(p>=u2)[0]
+    rGood30 = r[p>=u3,:]
+    idxGood30 = np.nonzero(p>=u3)[0]
+    rBad10 = r[p<=l, :]
+    idxBad10 = np.nonzero(p<=l)[0]
+    rBad20 = r[p<=l2, :]
+    idxBad20 = np.nonzero(p<=l2)[0]
+    rBad30 = r[p<=l3, :]
+    idxBad30 = np.nonzero(p<=l3)[0]
+    result = {}
+    result['rGood10']=rGood10
+    result['idxGood10']=idxGood10
+    result['rGood20']=rGood20
+    result['idxGood20']=idxGood20
+    result['rGood30']=rGood30
+    result['idxGood30']=idxGood30
+    result['rBad10']=rBad10
+    result['idxBad10']=idxBad10
+    result['rBad20']=rBad20
+    result['idxBad20']=idxBad20
+    result['rBad30']=rBad30
+    result['idxBad30']=idxBad30
+    return result
+
+def tagDict():
+    client = pymongo.MongoClient('localhost', 27017)
+    db = client.quanLiang
+    l = list(db.tagInfo.find())
+    td = {}
+    for x in l:
+        td[x['tagName']]={'file':x['tag'], 'off_start':(x['off_start'][0], int(x['off_start'][1]))}
+    return td
+
+def tagMapper(tagName):
+    td = tagDict()
+    if (tagName in td):
+        return td[tagName]
+    else:
+        return {'file':'-1','off_start':('close_mtx', 0)}
+
+def totInTag(checkIdx, tagMtx, dtes, name, trades, offStart, tagOffStart):
+    totInTag = 0
+    d = list(dtes)
+    n = list(name)
+    off = 0
+    idxTradesOverLapped = []
+    if (offStart==('open_mtx',0)) and (tagOffStart==('close_mtx',0)):
+        off = -1
+    for i in checkIdx:
+        b = d.index(trades[i]['dateIn'])+off
+        a = n.index(trades[i]['name'])
+        if tagMtx[a,b]==1:
+            totInTag = totInTag +1
+            idxTradesOverLapped.append(i)
+    return totInTag/len(checkIdx), idxTradesOverLapped
+
+def analyzeTradeTags(trades, r, checkIdx, title, strategy_name, dtes, name, offStart=('close_mtx',0)):
+    client = pymongo.MongoClient('localhost', 27017)
+    db = client.quanLiang
+    dbt = client.tinySoftData
+    tagNames = list(tagDict().keys())
+    idxTradesOverLappedList = []
+    s = []
+    print(tagNames)
+    for i in range(len(tagNames)):
+        t = tagMapper(tagNames[i])
+        with open("d:\\pkl\\" + t['file'] + ".pkl", 'rb+') as f:
+            tagFile = pickle.load(f)
+        tagOffStart = t['off_start']
+        tagMtx = tagFile['tag_mtx']
+        p1, idxOverLappedTrades = totInTag(checkIdx, tagMtx, dtes, name, trades, offStart, tagOffStart)
+        idxTradesOverLappedList.append(idxOverLappedTrades)
+        p = np.round(p1*1e4)/1e2
+        print(title, tagNames[i], p, np.sum(tagMtx))
+        s.append({'标签':tagNames[i], '符合度':p})
+    s.sort(key=lambda t:t['符合度'], reverse=True)
+    db.strategyMinuteBar.update_one({'strategy_name':strategy_name}, {'$set':{
+        title+'标签': s
+    }},upsert=True)
+    return tagNames,idxTradesOverLappedList
+    

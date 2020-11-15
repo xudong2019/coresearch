@@ -84,7 +84,7 @@ lb=vol_mtx[:, -1]/q[:,-2]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[24]:
+# In[7]:
 
 
 Wl = 500 # 当天收盘价格位于Wl日内的高低点相对位置
@@ -103,7 +103,7 @@ nameMarketValue = [x['name'] for x in list(db.tkrsInfo.find({'tagCirculateMarket
 nameIsUp = name[close_mtx[:, -1]>open_mtx[:, -1]]
 
 
-# In[25]:
+# In[8]:
 
 
 m = set(namePriceLoc).intersection(set(nameMarketValue)).intersection(set(nameTiaoKongGaoKai)).intersection(set(nameIsUp))
@@ -112,7 +112,7 @@ qt = list(dbt.minuteBarStock.find({'ticker':{'$in': list(lm)},'sale1':{'$gt':0},
 selectedName=[x['StockName'] for x in qt]
 
 
-# In[115]:
+# In[9]:
 
 
 if (len(selectedName)>0):

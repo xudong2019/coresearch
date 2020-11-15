@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[4]:
+# In[1]:
 
 
 strategy_name ='鹏晖量化1号'
 
 
-# In[5]:
+# In[2]:
 
 
 import sys
@@ -33,7 +33,7 @@ client = pymongo.MongoClient('localhost', 27017)
 db = client.quanLiang
 
 
-# In[6]:
+# In[3]:
 
 
 def nowTime():
@@ -83,4 +83,10 @@ def runStrategy():
 
 
 runStrategy()
+
+
+# In[ ]:
+
+
+
 
