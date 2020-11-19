@@ -5,6 +5,7 @@
 
 
 strategy_name ='鹏晖量化1号'
+off_start = ('close_mtx',0)
 
 
 # In[2]:
@@ -88,12 +89,6 @@ amount_mtx = z['amount_mtx']
 # In[7]:
 
 
-dtes[-1]
-
-
-# In[8]:
-
-
 mv = np.zeros(len(tkrs))
 for (i,x) in enumerate(tkrs):
     q = db.tkrsInfo.find_one({'ticker':x},{'circulateMarketValue':1})
@@ -102,7 +97,7 @@ for (i,x) in enumerate(tkrs):
     mv[i] = q['circulateMarketValue']
 
 
-# In[ ]:
+# In[8]:
 
 
 #策略部分：
@@ -156,7 +151,7 @@ for k in range(close_mtx.shape[1]-1):
     idxCloseNotSmallerThanIntradayFall[:, k+1] = (close_mtx[:, k+1] / open_mtx[:, k+1] -1) > intradayFall
 
 
-# In[ ]:
+# In[9]:
 
 
 def calculateProfit(idxQ, title1, detail='no', detailTrade=8, off=1, startDate=20150101):
@@ -203,6 +198,7 @@ def calculateProfit(idxQ, title1, detail='no', detailTrade=8, off=1, startDate=2
         intradayHigh = high_mtx[idxQ[:,k], k]
         idxZhangTing = high_mtx[idxQ[:,k], k]/close_yesterday-1 > 0.095
         t = name[idxQ[:,k]]
+        tt = np.array(tkrs)[idxQ[:,k]]
         cbuy = close_today.copy()
         cbuy[idxZhangTing] = intradayHigh[idxZhangTing]
         r8[k]=(np.mean(close_off/cbuy-1))/off
@@ -237,6 +233,7 @@ def calculateProfit(idxQ, title1, detail='no', detailTrade=8, off=1, startDate=2
                     s='分笔:,'+str(t[i])+','+str(dtes[k])                                     +',盘中涨停？,'+str(idxZhangTing[i])                                     +',买入价(第二天开盘),'+str(np.round(open_tomorrow[i], 2))                                     +',卖出价(第三天开盘),'+str(np.round(open_2[i], 2))                                     +',利润:,'+str(np.round(1e4*(open_2[i]/open_tomorrow[i]-1))/1e2)+',(%)'                                     +',参考信息： 今天收盘价较前一天收盘,'                                     +str(np.round(1e4*(close_today[i]/close_yesterday[i]-1))/1e2)+',(%)'                                     +',参考信息： 今天收盘价较开盘,'                                     +str(np.round(1e4*(close_today[i]/open_today[i]-1))/1e2)+',(%)'                                     +',距离前高点,'+str(daysFromPreHigh[i])                                     +',流通市值,'+str(mvk[i])                                     +',过去五日回报率,'+str(return5d[i])                                     +',过去十日回报率,'+str(return10d[i])                                     +',近期波动率,'+str(std10d[i])                                     +',第一天高点到收盘,'+str(np.round(1e4*(high_today[i]/close_today[i]-1))/1e2)
                     db.strategyBackTestTrades.insert_one({
                         'name':str(t[i]),
+                        'ticker':str(tt[i]),
                         'dateIn':int(dtes[k]), 
                         'strategy_name':strategy_name,
                         '买入价':np.round(open_tomorrow[i], 2),
@@ -277,7 +274,7 @@ def calculateProfit(idxQ, title1, detail='no', detailTrade=8, off=1, startDate=2
     return r1[dtes>startDate],r2[dtes>startDate],r3[dtes>startDate],r4[dtes>startDate],r5[dtes>startDate],r6[dtes>startDate],r7[dtes>startDate],r8[dtes>startDate], dtes[dtes>startDate]
 
 
-# In[ ]:
+# In[10]:
 
 
 #筛选条件
@@ -302,13 +299,13 @@ idxQ = idxOpenHigh & idxNotNewStock & idxPreDayNotBreakHigh & idxNotZhangtingAtC
 #idxQ = idxOpenHigh & idxNotNewStock & idxPreDayNotBreakHigh & idxNotZhangtingAtClose & idxCloseNotSmallerThanIntradayFall & (idxNotZhangtingAtAnyMoment==False)
 
 
-# In[ ]:
+# In[11]:
 
 
 [r1, r2, r3, r4, r5,r6,r7,r8,dtesUsed] = calculateProfit(idxQ, '高开买入后回报率变化', off=3, startDate=startDate)
 
 
-# In[ ]:
+# In[12]:
 
 
 q = list(db.tkrsInfo.find({},{'ticker':1,'circulateMarketValue20190101':1,'circulateMarketValue20200101':1,'circulateMarketValue':1}))
@@ -325,7 +322,7 @@ for x in q:
         cmv2020[list(tkrs).index(x['ticker'])]=x['circulateMarketValue20200101']
 
 
-# In[ ]:
+# In[13]:
 
 
 #只选一部分股票
@@ -357,7 +354,7 @@ for k in range(close_mtx.shape[1]-1):
 rschLib.drawPNL(dtesUsed, r3, dtes, strategy_name, toDatabase='yes')
 
 
-# In[ ]:
+# In[14]:
 
 
 #比较视图cmv_threshold取不同值
@@ -375,18 +372,26 @@ for k in range(close_mtx.shape[1]-1):
 
 [r1c,r2c,r3c,r4c,r5c,r6c,r7c,r8c, dc] = calculateProfit(idxQsub, '每天高开突破阻力线， 且符合选股标签的股票数目', detail='no',detailTrade=3, off=off, startDate=startDate)
 rschLib.drawPNL(dtesUsed, r3c,dtes, strategy_name)
+rschLib.saveOffStart(strategy_name, off_start)
+rschLib.updateStrategyGeneratingStatus(strategy_name, '生成进度:25%。策略生成准备工作完成。 '+str(datetime.datetime.now()))
 
 
-# In[ ]:
+# In[15]:
 
 
 plt.plot(np.cumsum(r3c), 'r')
 plt.plot(np.cumsum(r3), 'b')
 
 
-# In[ ]:
+# In[16]:
 
 
 #load_ext line_profiler
 # #%lprun -f getPnl getPnl()
+
+
+# In[ ]:
+
+
+
 

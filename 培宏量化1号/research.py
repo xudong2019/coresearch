@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[21]:
 
 
 strategy_name ='培宏量化1号'
+off_start = ('close_mtx', 0)
 
 
-# In[2]:
+# In[22]:
 
 
 import sys
@@ -35,21 +36,21 @@ db = client.quanLiang
 dbt = client.tinySoftData
 
 
-# In[3]:
+# In[23]:
 
 
 #参数：
 startDate = 20180101
 
 
-# In[4]:
+# In[24]:
 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
 
-# In[5]:
+# In[25]:
 
 
 plt.rcParams['font.sans-serif'] = [u'SimHei']
@@ -58,7 +59,7 @@ default_dpi = plt.rcParamsDefault['figure.dpi']
 plt.rcParams['figure.dpi'] = default_dpi*1
 
 
-# In[6]:
+# In[26]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -86,7 +87,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[7]:
+# In[27]:
 
 
 v = pd.DataFrame(vol_mtx)
@@ -97,20 +98,20 @@ lb[:,1:]=vol_mtx[:, 1:]/q[:,:-1]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[8]:
+# In[28]:
 
 
 idxTiaoKongGaoKai = np.hstack((np.zeros((open_mtx.shape[0],1))==1,((open_mtx[:,1:] / high_mtx[:,:-1]) - 1 > 0.01)))
 
 
-# In[9]:
+# In[29]:
 
 
 name = list(name)
 tkrs = list(tkrs)
 
 
-# In[10]:
+# In[30]:
 
 
 Ns = 10 # 取每天量比的前多少名
@@ -141,7 +142,7 @@ for k in range(1,close_mtx.shape[1]):
     
 
 
-# In[11]:
+# In[31]:
 
 
 q = list(db.tkrsInfo.find({},{
@@ -180,7 +181,7 @@ for x in q:
         cmv2020[list(tkrs).index(x['ticker'])]=x['circulateMarketValue20200101']
 
 
-# In[12]:
+# In[32]:
 
 
 cmv_threshold = 100e4
@@ -191,19 +192,19 @@ q = [list(tkrs).index(x) for x in wants]
 idxT = [x in q for x in range(len(tkrs))]
 
 
-# In[13]:
+# In[33]:
 
 
 idxNST = [('ST' in x)==False for x in name]
 
 
-# In[14]:
+# In[34]:
 
 
 startDate = 20180101
 
 
-# In[15]:
+# In[35]:
 
 
 tkrs.index('SH600420')
@@ -211,7 +212,7 @@ idxT[544]
 print(priceLocL[544,-1],preLowL[544,-1], preHighL[544,-1],close_mtx[544,-1])
 
 
-# In[16]:
+# In[36]:
 
 
 priceLocThrsMin = 0.1 # 价格大于近期的priceLocthrsMin位置
@@ -318,11 +319,15 @@ for k in range(k0, close_mtx.shape[1]):
         s = nn[ll.index(t)] + ','+str(dtes[k])+',量比,'+str(np.round(lbm[iq]))+        ',价格位置（长期),'+str(np.round(1e4*pLocL[iq])/1e2)+        ',价格位置（短期),'+str(np.round(1e4*pLocS[iq])/1e2)+        ',cmv2019,'+str(cmv2019[ll.index(t)])+        ',cmv2020,'+str(cmv2020[ll.index(t)])+        ',cmv2018,'+str(cmv2018[ll.index(t)])+        ',第一天涨幅,'+str(close_today[iq]/close_yesterday[iq]-1)+        ',开盘涨幅（9:30-9:35）,'+str(close0935[iq]/close0930[iq]-1)+        ',入场后到收盘,'+str(close_today[iq]/close0935[iq]-1)+        ',第二天开盘涨幅,'+str(open_tomorrow[iq]/close_today[iq]-1)+        ',第二天日内涨幅,'+str(close_tomorrow[iq]/open_tomorrow[iq]-1)+        ',第二天收盘至第三天开盘,'+str(open_p3[iq]/close_tomorrow[iq]-1)+        ',第三天开盘至收盘,'+str(close_p3[iq]/open_p3[iq]-1)+        ',昨日涨幅,'+str(close_yesterday[iq]/close_yesterday2[iq]-1)+        ',跳空高开幅度,'+str(open_today[iq]/close_yesterday[iq]-1)+        ',买入价,'+str(open_tomorrow[iq])+        ',卖出价,'+str(close_p3[iq])+        ',利润,'+str(close_p3[iq]/open_tomorrow[iq]-1)+        ',是否涨停,'+str(isZhangTing[iq])
         f.write(s+'\n')
         print(nn[ll.index(t)] + ','+str(dtes[k])+',量比,'+str(np.round(lbm[iq]))+',进场价格:'+str(open_tomorrow[iq])+',出场价格:'+str(close_p3[iq])+',利润,'+str(close_p3[iq]/open_tomorrow[iq]-1))
-        db.strategyBackTestTrades.insert_one({'name':nn[ll.index(t)], 'dateIn':int(dtes[k]), 'strategy_name':strategy_name})
+        db.strategyBackTestTrades.insert_one({
+            'ticker':t,
+            'name':nn[ll.index(t)], 
+            'dateIn':int(dtes[k]), 
+            'strategy_name':strategy_name})
 f.close()
 
 
-# In[17]:
+# In[37]:
 
 
 pnl1 = np.array(pnl1)
@@ -337,13 +342,13 @@ pnl4[np.isfinite(pnl4)==False]=0
 pnl5[np.isfinite(pnl5)==False]=0
 
 
-# In[18]:
+# In[38]:
 
 
 plt.plot(tradesCount)
 
 
-# In[19]:
+# In[39]:
 
 
 plt.plot(dtes2Label(dtesUsed), np.cumsum(pnl1), 'k')
@@ -355,22 +360,16 @@ plt.legend(['第一天入场到第一天收盘', '第一天收盘到第二天开
 plt.grid()
 
 
-# In[20]:
+# In[40]:
 
 
 rschLib.drawPNL(dtesUsed, pnl3+pnl4+pnl5,  dtes, strategy_name, toDatabase='yes')
 
 
-# In[ ]:
+# In[41]:
 
 
-
-
-
-# In[ ]:
-
-
-
+rschLib.saveOffStart(strategy_name, off_start)
 
 
 # In[ ]:

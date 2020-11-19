@@ -1,6 +1,5 @@
-output.txt
-output2.txt
-.idea
+**/*.txt
+**/*.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

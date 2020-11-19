@@ -47,12 +47,12 @@ offStarts = [x['off_start'] for x in rschLib.tagDict().values()]
 importlib.reload(rschLib)
 
 
-# In[4]:
+# In[12]:
 
 
 def analyzeStrategy(strategy_name, offStart, dtes, name, tkrs):
     timeAsFloat, timeLabels, maxM, dayOff = rschLib.getTimeLabels(maxD)
-    trades, tradesUsed, Po, r = rschLib.getTrades(strategy_name, name, tkrs, dtes, maxD, maxM)
+    trades, tradesUsed, Po, r = rschLib.getTradesWithPklCache(strategy_name, name, tkrs, dtes, maxD, maxM)
     # get trade samples by good/bad trades
     tradeArea=[inTime,otTime]
     result = rschLib.getTradeAnalysisSampleGroups(r, tradeArea)
@@ -66,30 +66,32 @@ def analyzeStrategy(strategy_name, offStart, dtes, name, tkrs):
     rschLib.drawPriceChange(result['rBad20'], strategy_name, timeLabels=timeLabels, title='亏损前20%交易', tp=tradeArea)
     rschLib.drawPriceChange(result['rBad30'], strategy_name, timeLabels=timeLabels, title='亏损前30%交易', tp=tradeArea)
     # analyze tags
-    rschLib.analyzeTradeTags(trades, result['rGood10'], result['idxGood10'], '盈利前10%交易',strategy_name, dtes, name, offStart)
-    rschLib.analyzeTradeTags(trades, result['rGood20'], result['idxGood20'], '盈利前20%交易',strategy_name, dtes, name, offStart)
-    rschLib.analyzeTradeTags(trades, result['rGood30'], result['idxGood30'], '盈利前30%交易',strategy_name, dtes, name, offStart)
-    rschLib.analyzeTradeTags(trades, result['rBad10'], result['idxBad10'], '亏损前10%交易',strategy_name, dtes, name, offStart)
-    rschLib.analyzeTradeTags(trades, result['rBad20'], result['idxBad20'], '亏损前20%交易',strategy_name, dtes, name, offStart)
-    rschLib.analyzeTradeTags(trades, result['rBad30'], result['idxBad30'], '亏损前30%交易',strategy_name, dtes, name, offStart)
+    #rschLib.analyzeTradeTags(tradesUsed, result['rGood10'], result['idxGood10'], '盈利前10%交易',strategy_name, dtes, tkrs, offStart)
+    #rschLib.analyzeTradeTags(tradesUsed, result['rGood20'], result['idxGood20'], '盈利前20%交易',strategy_name, dtes, tkrs, offStart)
+    #rschLib.analyzeTradeTags(tradesUsed, result['rGood30'], result['idxGood30'], '盈利前30%交易',strategy_name, dtes, tkrs, offStart)
+    #rschLib.analyzeTradeTags(tradesUsed, result['rBad10'], result['idxBad10'], '亏损前10%交易',strategy_name, dtes, tkrs, offStart)
+    #rschLib.analyzeTradeTags(tradesUsed, result['rBad20'], result['idxBad20'], '亏损前20%交易',strategy_name, dtes, tkrs, offStart)
+    #rschLib.analyzeTradeTags(tradesUsed, result['rBad30'], result['idxBad30'], '亏损前30%交易',strategy_name, dtes, tkrs, offStart)
 
     #get tag names
-    tnames, idxOverLapTagList=rschLib.analyzeTradeTags(trades, r, list(range(len(trades))), '所有交易',strategy_name, dtes, name, offStart)
+    tnames, tagNamesEn,t2 = rschLib.getTagNames()
+    idxOverLapTagList=rschLib.analyzeTradeTags(tradesUsed, r, list(range(len(tradesUsed))), '所有交易',strategy_name, dtes, tkrs, offStart)
 
     #draw pnl and tag pnl
     importlib.reload(rschLib)
-    [dtesByTrade, pnlByTrade]=rschLib.getPnl(dtes,tkrs, name, trades, inTime, otTime, dayOff, timeAsFloat, toDatabase='yes', strategy_name=strategy_name)
+    [dtesByTrade, pnlByTrade]=rschLib.getPnl(dtes,tkrs, name, tradesUsed, inTime, otTime, dayOff, timeAsFloat, toDatabase='yes', strategy_name=strategy_name)
     [dtesPnlAggr,pnlAggr, numTrades] = rschLib.aggregatePnlAndDtes(dtesByTrade, pnlByTrade)
     rschLib.drawPNL(dtesPnlAggr, pnlAggr, dtes, strategy_name, toDatabase='yes')
     for i in range(len(tnames)):
         tagName = tnames[i]
         [dtesWithTag, pnlWithTag,n] = rschLib.aggregatePnlAndDtes(dtesByTrade[idxOverLapTagList[i]],pnlByTrade[idxOverLapTagList[i]])
         rschLib.drawPNL(dtesWithTag, pnlWithTag, dtes, strategy_name, toDatabase='yes', dateStart=dtesPnlAggr[0], pnlType=tagName)
-        rschLib.drawPNL(dtesWithTag, pnlWithTag, dtes, strategy_name+'+'+tagName, toDatabase='yes', dateStart=dtesPnlAggr[0], pnlType='pnl')
+        rschLib.drawPNL(dtesWithTag, pnlWithTag, dtes, strategy_name+'+'+tagNamesEn[i], toDatabase='yes', dateStart=dtesPnlAggr[0], pnlType='pnl')
 
     #analysis of number of trades vs performance
     importlib.reload(rschLib)
     rschLib.pnlVsNumtrades(pnlAggr, numTrades, strategy_name, toDatabase='yes')
+    rschLib.saveOffStart(strategy_name, offStart)
 
 
 # In[ ]:
@@ -99,11 +101,4 @@ importlib.reload(rschLib)
 for (i,strategy_name) in enumerate(strategy_names):
     offStart = offStarts[i]
     analyzeStrategy(strategy_name, offStart, dtes, name, tkrs)
-
-
-# In[ ]:
-
-
-#%load_ext line_profiler
-#%lprun -f analyzeStrategy analyzeStrategy(strategy_name, offStart, dtes, name, tkrs)
 
