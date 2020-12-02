@@ -29,7 +29,7 @@ import talib
 import matplotlib.dates as mdates
 
 np.set_printoptions(formatter={'float_kind': "{:.6f}".format})
-client = pymongo.MongoClient('localhost', 27017)
+client = pymongo.MongoClient('mongodb://admin:admin2020!@172.19.17.43:27018/quanLiang', 27017)
 db = client.quanLiang
 
 
@@ -48,7 +48,7 @@ nowString()
 
 
 def runStrategy():
-    while (nowTime()>150000)|(nowTime()<93000):
+    while (nowTime()>150000)|(nowTime()<92700):
         print('waiting for market open...')
         time.sleep(60)
     n = list(db.tkrsInfo.find({'TagBreak1YHighOpen':1, 'tagCirculateMarketValueBiggerThan100Y':1, 'TagPreDayBreak1YHigh':0, 'TagIsZhangting':0},{'name':1}))
@@ -79,14 +79,14 @@ def runStrategy():
     print(names)
 
 
-# In[5]:
+# In[ ]:
 
 
 runStrategy()
 
 
-# In[ ]:
+# In[11]:
 
 
-
+1+1
 

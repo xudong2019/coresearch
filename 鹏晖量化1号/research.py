@@ -31,8 +31,7 @@ import talib
 import matplotlib.dates as mdates
 
 np.set_printoptions(formatter={'float_kind': "{:.6f}".format})
-client = pymongo.MongoClient('localhost', 27017)
-db = client.quanLiang
+db = rschLib.db_quanLiang()
 
 
 # In[3]:
@@ -373,7 +372,7 @@ for k in range(close_mtx.shape[1]-1):
 [r1c,r2c,r3c,r4c,r5c,r6c,r7c,r8c, dc] = calculateProfit(idxQsub, '每天高开突破阻力线， 且符合选股标签的股票数目', detail='no',detailTrade=3, off=off, startDate=startDate)
 rschLib.drawPNL(dtesUsed, r3c,dtes, strategy_name)
 rschLib.saveOffStart(strategy_name, off_start)
-rschLib.updateStrategyGeneratingStatus(strategy_name, '生成进度:25%。策略生成准备工作完成。 '+str(datetime.datetime.now()))
+rschLib.updateStrategyGeneratingStatus(strategy_name, '生成进度:25%。策略生成准备工作完成。 '+str(datetime.datetime.now()),25)
 
 
 # In[15]:
@@ -388,6 +387,12 @@ plt.plot(np.cumsum(r3), 'b')
 
 #load_ext line_profiler
 # #%lprun -f getPnl getPnl()
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

@@ -16,31 +16,34 @@ sys.path.append(r"C:\\Users\\xudong\\Documents\\guanzhao\\dataserver\\")
 from library.tags import tags
 import rschLib
 import pickle
+import datetime
 
-client = pymongo.MongoClient('localhost', 27017)
-db = client.quanLiang
-dbt = client.tinySoftData
+db = rschLib.db_quanLiang()
+dbt = rschLib.db_tinySoftData()
 dtes, tkrs, name, open_mtx, high_mtx, low_mtx, close_mtx,belong, shenwan1, shenwan2, shenwan3, vol_mtx, amount_mtx = rschLib.loadDailyBarMtx()
 
 
-# In[8]:
+# In[2]:
 
 
 def generateTagAnalysis(tagName):
+    print(tagName)
     tname = rschLib.tagMapper(tagName)['file']
     strategy_name = tname
+    startDate = 20180101
     back_test_days = 500
     with open("d:\\pkl\\" + tname + ".pkl", 'rb+') as f:
         tagInfo = pickle.load(f)
     tag_mtx = tagInfo['tag_mtx']
-    off_start = tagInfo['off_start']
+    off_start = rschLib.tagMapper(tagName)['off_start']
+    rschLib.saveOffStart(strategy_name, off_start)
     tagNotNew = np.zeros(close_mtx.shape)
     for i in range(close_mtx.shape[0]):
         j = np.nonzero(close_mtx[i,:]>0)[0][0]
         v = np.min((close_mtx.shape[1], j+60))
         tagNotNew[i, v:]=1
     tag_mtx = (tag_mtx==1) & (tagNotNew==1) # 去掉新股票
-    max_holding_days = 10
+    max_holding_days = 4
     daily_stage = []
     matrix_types = ['open_mtx', 'close_mtx']
     flag = 0
@@ -87,11 +90,19 @@ def generateTagAnalysis(tagName):
     for i in range(len(pnlByPeriod)):
         pnlByPeriod_mtx[i,:] = pnlByPeriod[i][:len(pnlByPeriod[-1])]
 
-    # %% calculate best investment records
-    best = 0
-    dtesUsed = dtesUsedByPeriod[best][-back_test_days:]
-    tag_mtxUsed = tagsUsedByPeriod[best][:, -back_test_days:]
-    pnl = [float(x) for x in np.cumsum(pnlByPeriod[best][-back_test_days:])]
+    # %% calculate best investment records, 如果是开盘的，假设开盘可以买入， 如果是收盘的，假设第二天开盘可以买入
+    if off_start==('open_mtx', 0):
+        best = 0
+    else:
+        best = 1
+    idxStart = dtesUsedByPeriod[best]>startDate
+    idxStart2 = dtesUsedByPeriod[best+1]>startDate
+    dtesUsed = dtesUsedByPeriod[best][idxStart]
+    tag_mtxUsed = tagsUsedByPeriod[best][:, idxStart]
+    n1 = np.cumsum(pnlByPeriod[best][idxStart])
+    n2 = np.cumsum(pnlByPeriod[best+1][idxStart2])
+    n1[len(n1)-len(n2):] = n1[len(n1)-len(n2):]+n2
+    pnl = [float(x) for x in n1]
     plt.title('pnl')
     plt.plot(pnl)
     plt.grid()
@@ -103,29 +114,44 @@ def generateTagAnalysis(tagName):
         }},upsert=True)
     # %% priceChange
     priceChange = np.mean(pnlByPeriod_mtx[:, -back_test_days:], axis=1)
-    labels = pnlByPeriod_mtx[best][-back_test_days:]
     plt.figure()
     plt.plot(np.cumsum(priceChange))
 
     # %% 每笔交易上传至数据库
+    db.strategyBackTest.remove({'strategy_name':strategy_name})
     db.strategyBackTestTrades.remove({'strategy_name':strategy_name})
+    dtesUsed = [int(x) for x in dtesUsed]
     for (i, x) in enumerate(dtesUsed):
         q = name[tag_mtxUsed[:,i]==1]
-        for y in q:
-            db.strategyBackTestTrades.update({
+        tk = tkrs[tag_mtxUsed[:,i]==1]
+        query = []
+        for i, y in enumerate(q):
+            query.append({
                 'strategy_name':strategy_name,
                 'name':y,
+                'ticker':tk[i],
                 'dateIn':int(x)
             })
+        if len(query)>0:
+            db.strategyBackTestTrades.insert_many(query)
+    rschLib.updateStrategyGeneratingStatus(strategy_name, '生成进度:10%。初始化标签。'+str(datetime.datetime.now()),10)
 
 
-# In[9]:
+# In[3]:
 
 
 importlib.reload(rschLib)
 tagNames = list(rschLib.tagDict().keys())
 for q in range(len(tagNames)):
     generateTagAnalysis(tagNames[q])
+
+
+# In[4]:
+
+
+# importlib.reload(rschLib)
+# %load_ext line_profiler
+# %lprun -f generateTagAnalysis generateTagAnalysis(tagName)
 
 
 # In[ ]:

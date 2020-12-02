@@ -7,7 +7,7 @@
 strategy_name ='培宏量化1号'
 
 
-# In[2]:
+# In[14]:
 
 
 import sys
@@ -30,12 +30,13 @@ import talib
 import matplotlib.dates as mdates
 
 np.set_printoptions(formatter={'float_kind': "{:.6f}".format})
-client = pymongo.MongoClient('localhost', 27017)
-db = client.quanLiang
-dbt = client.tinySoftData
+clientdbt = pymongo.MongoClient('localhost', 27017)
+clientdb = pymongo.MongoClient('mongodb://admin:admin2020!@172.19.17.43:27018/quanLiang', 27017)
+db = clientdb.quanLiang
+dbt = clientdbt.tinySoftData
 
 
-# In[3]:
+# In[15]:
 
 
 def nowTime():
@@ -46,7 +47,7 @@ nowTime()
 nowString()
 
 
-# In[4]:
+# In[16]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -74,7 +75,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[5]:
+# In[17]:
 
 
 v = pd.DataFrame(vol_mtx)
@@ -84,7 +85,7 @@ lb=vol_mtx[:, -1]/q[:,-2]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[7]:
+# In[18]:
 
 
 Wl = 500 # 当天收盘价格位于Wl日内的高低点相对位置
@@ -103,7 +104,7 @@ nameMarketValue = [x['name'] for x in list(db.tkrsInfo.find({'tagCirculateMarket
 nameIsUp = name[close_mtx[:, -1]>open_mtx[:, -1]]
 
 
-# In[8]:
+# In[19]:
 
 
 m = set(namePriceLoc).intersection(set(nameMarketValue)).intersection(set(nameTiaoKongGaoKai)).intersection(set(nameIsUp))
@@ -112,7 +113,7 @@ qt = list(dbt.minuteBarStock.find({'ticker':{'$in': list(lm)},'sale1':{'$gt':0},
 selectedName=[x['StockName'] for x in qt]
 
 
-# In[9]:
+# In[20]:
 
 
 if (len(selectedName)>0):
@@ -124,5 +125,10 @@ else:
 s = s+' ('+str(dtes[-1])+')'
 print(s)
 db.strategyEventRecords.insert_one({'strategy_name':strategy_name, 'updateTime':nowString(), 'content':s})
-      
+
+
+# In[ ]:
+
+
+
 
