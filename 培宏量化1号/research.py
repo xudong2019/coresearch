@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[48]:
 
 
 strategy_name ='培宏量化1号'
 off_start = ('close_mtx', 0)
 
 
-# In[2]:
+# In[49]:
 
 
 import sys
@@ -32,25 +32,25 @@ import matplotlib.dates as mdates
 
 np.set_printoptions(formatter={'float_kind': "{:.6f}".format})
 client = pymongo.MongoClient('localhost', 27017)
-db = client.quanLiang
-dbt = client.tinySoftData
+db = rschLib.db_quanLiang()
+dbt = rschLib.db_tinySoftData()
 
 
-# In[3]:
+# In[50]:
 
 
 #参数：
 startDate = 20180101
 
 
-# In[4]:
+# In[51]:
 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
 
-# In[5]:
+# In[52]:
 
 
 plt.rcParams['font.sans-serif'] = [u'SimHei']
@@ -59,7 +59,7 @@ default_dpi = plt.rcParamsDefault['figure.dpi']
 plt.rcParams['figure.dpi'] = default_dpi*1
 
 
-# In[6]:
+# In[53]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -87,7 +87,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[7]:
+# In[54]:
 
 
 v = pd.DataFrame(vol_mtx)
@@ -98,20 +98,20 @@ lb[:,1:]=vol_mtx[:, 1:]/q[:,:-1]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[8]:
+# In[55]:
 
 
 idxTiaoKongGaoKai = np.hstack((np.zeros((open_mtx.shape[0],1))==1,((open_mtx[:,1:] / high_mtx[:,:-1]) - 1 > 0.01)))
 
 
-# In[9]:
+# In[56]:
 
 
 name = list(name)
 tkrs = list(tkrs)
 
 
-# In[10]:
+# In[57]:
 
 
 Ns = 10 # 取每天量比的前多少名
@@ -142,7 +142,7 @@ for k in range(1,close_mtx.shape[1]):
     
 
 
-# In[11]:
+# In[58]:
 
 
 q = list(db.tkrsInfo.find({},{
@@ -181,7 +181,7 @@ for x in q:
         cmv2020[list(tkrs).index(x['ticker'])]=x['circulateMarketValue20200101']
 
 
-# In[12]:
+# In[59]:
 
 
 cmv_threshold = 100e4
@@ -192,19 +192,19 @@ q = [list(tkrs).index(x) for x in wants]
 idxT = [x in q for x in range(len(tkrs))]
 
 
-# In[13]:
+# In[60]:
 
 
 idxNST = [('ST' in x)==False for x in name]
 
 
-# In[14]:
+# In[61]:
 
 
 startDate = 20180101
 
 
-# In[15]:
+# In[62]:
 
 
 tkrs.index('SH600420')
@@ -212,7 +212,7 @@ idxT[544]
 print(priceLocL[544,-1],preLowL[544,-1], preHighL[544,-1],close_mtx[544,-1])
 
 
-# In[16]:
+# In[63]:
 
 
 priceLocThrsMin = 0.1 # 价格大于近期的priceLocthrsMin位置
@@ -327,7 +327,7 @@ for k in range(k0, close_mtx.shape[1]):
 f.close()
 
 
-# In[17]:
+# In[64]:
 
 
 pnl1 = np.array(pnl1)
@@ -342,13 +342,13 @@ pnl4[np.isfinite(pnl4)==False]=0
 pnl5[np.isfinite(pnl5)==False]=0
 
 
-# In[18]:
+# In[65]:
 
 
 plt.plot(tradesCount)
 
 
-# In[19]:
+# In[66]:
 
 
 plt.plot(dtes2Label(dtesUsed), np.cumsum(pnl1), 'k')
@@ -360,28 +360,16 @@ plt.legend(['第一天入场到第一天收盘', '第一天收盘到第二天开
 plt.grid()
 
 
-# In[20]:
+# In[67]:
 
 
 rschLib.drawPNL(dtesUsed, pnl3+pnl4+pnl5,  dtes, strategy_name, toDatabase='yes')
 
 
-# In[21]:
+# In[68]:
 
 
 rschLib.saveOffStart(strategy_name, off_start)
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:

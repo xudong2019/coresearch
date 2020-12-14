@@ -12,7 +12,7 @@ maxD = 3
 offStart = ('open_mtx',0)
 
 
-# In[2]:
+# In[3]:
 
 
 import sys
@@ -45,45 +45,65 @@ tradesUsed, r_withnan = rschLib.getTradesFast(strategy_name, name, tkrs, dtes, m
 
 # get trade samples by good/bad trades
 tradeArea=[inTime,otTime]
-idxTradable = np.isfinite(r_withnan[:,tradeArea[0]])
 r = r_withnan.copy()
 r[np.isfinite(r)==False]=0
 
-result = rschLib.getTradeAnalysisSampleGroups(r, idxTradable, tradeArea)
-
 # draw price change
+idxTradable = np.isfinite(r_withnan[:,tradeArea[0]])
+result = rschLib.getTradeAnalysisSampleGroups(r, idxTradable, tradeArea)
 rschLib.drawPriceChange(r[idxTradable,:], strategy_name, timeLabels=timeLabels, tp=tradeArea)
 rschLib.drawPriceChange(result['rGood10'], strategy_name, timeLabels=timeLabels, title='盈利前10%交易', tp=tradeArea)
-#rschLib.drawPriceChange(result['rGood20'], strategy_name, timeLabels=timeLabels, title='盈利前20%交易', tp=tradeArea)
 rschLib.drawPriceChange(result['rGood30'], strategy_name, timeLabels=timeLabels, title='盈利前30%交易', tp=tradeArea)
 rschLib.drawPriceChange(result['rBad10'], strategy_name, timeLabels=timeLabels, title='亏损前10%交易',  tp=tradeArea)
-#rschLib.drawPriceChange(result['rBad20'], strategy_name, timeLabels=timeLabels, title='亏损前20%交易',  tp=tradeArea)
 rschLib.drawPriceChange(result['rBad30'], strategy_name, timeLabels=timeLabels, title='亏损前30%交易',  tp=tradeArea)
-
+rschLib.drawPriceChange(result['rDieting'], strategy_name, timeLabels=timeLabels, title='第一天跌停', tp=tradeArea)
 
 # analyze tags
 rschLib.analyzeTradeTags(tradesUsed, result['rGood10'], result['idxGood10'], '盈利前10%交易',strategy_name, dtes, tkrs, offStart)
-#rschLib.analyzeTradeTags(tradesUsed, result['rGood20'], result['idxGood20'], '盈利前20%交易',strategy_name, dtes, tkrs, offStart)
 rschLib.analyzeTradeTags(tradesUsed, result['rGood30'], result['idxGood30'], '盈利前30%交易',strategy_name, dtes, tkrs, offStart)
 rschLib.analyzeTradeTags(tradesUsed, result['rBad10'], result['idxBad10'], '亏损前10%交易',strategy_name, dtes, tkrs, offStart)
-#rschLib.analyzeTradeTags(tradesUsed, result['rBad20'], result['idxBad20'], '亏损前20%交易',strategy_name, dtes, tkrs, offStart)
 rschLib.analyzeTradeTags(tradesUsed, result['rBad30'], result['idxBad30'], '亏损前30%交易',strategy_name, dtes, tkrs, offStart)
+rschLib.analyzeTradeTags(tradesUsed, result['rDieting'], result['idxDieting'], '亏损前30%交易',strategy_name, dtes, tkrs, offStart)
 
-#get tag names
+# get tag names
 tnames, t1,t2 = rschLib.getTagNames()
 idxOverLapTagList=rschLib.analyzeTradeTags(tradesUsed, r, list(range(len(tradesUsed))), '所有交易',strategy_name, dtes, tkrs, offStart)
 
-#draw pnl and tag pnl
+# draw pnl and tag pnl
 importlib.reload(rschLib)
-[dtesByTrade, pnlByTrade] = rschLib.getPnlFast(r, dtes, tkrs, name, tradesUsed, inTime, otTime, dayOff, timeAsFloat, toDatabase='yes', strategy_name=strategy_name)
+[dtesByTrade, pnlByTrade] = rschLib.getPnlFast(r, idxTradable, dtes, tkrs, name, tradesUsed, inTime, otTime, dayOff, timeAsFloat, toDatabase='yes', strategy_name=strategy_name)
 [dtesPnlAggr, pnlAggr, numTrades] = rschLib.aggregatePnlAndDtes(dtesByTrade, pnlByTrade)
 rschLib.drawPNL(dtesPnlAggr, pnlAggr, dtes, strategy_name, showFigure='yes', toDatabase='yes')
 for i in range(len(tnames)):
     tagName = tnames[i]
     [dtesWithTag, pnlWithTag,n] = rschLib.aggregatePnlAndDtes(dtesByTrade[idxOverLapTagList[i]],pnlByTrade[idxOverLapTagList[i]])
     rschLib.drawPNL(dtesWithTag, pnlWithTag, dtes, strategy_name, showFigure='yes', toDatabase='yes', dateStart=dtesPnlAggr[0], pnlType=tagName)
+    # 求非涨停，以及伴随有tagName标签的交易，绘制价格变化曲线
+    idxTradableAndHasTag = list(np.intersect1d(np.nonzero(idxTradable)[0], np.array(idxOverLapTagList[i])))
+    rschLib.drawPriceChange(r[idxTradableAndHasTag,:], strategy_name, timeLabels=timeLabels, title=tagName,  tp=tradeArea)
 
-#analysis of number of trades vs performance
+    
+# control group and optimal group
+[rawInTime, rawOtTime] = rschLib.getDefaultTradeTime(offStart)
+idxTradableRaw = np.isfinite(r_withnan[:, rawInTime])
+[dtesByTradeRaw, pnlByTradeRaw] = rschLib.getPnlFast(r, idxTradableRaw, dtes, tkrs, name, tradesUsed, rawInTime, rawOtTime, dayOff, timeAsFloat, toDatabase='yes', strategy_name=strategy_name)
+[dtesPnlAggrRaw, pnlAggrRaw, numTradesRaw] = rschLib.aggregatePnlAndDtes(dtesByTradeRaw, pnlByTradeRaw)
+rschLib.drawPNL(dtesPnlAggrRaw, pnlAggrRaw, dtes, strategy_name, showFigure='yes', toDatabase='yes', pnlType='rawPnl')
+[bestInTime, bestOtTime] = rschLib.getOptimalTradeTime(r[idxTradable, :], rawInTime)
+idxTradableBestInTime = np.isfinite(r_withnan[:, bestInTime])
+[dtesByTradeBest, pnlByTradeBest] = rschLib.getPnlFast(r, idxTradableBestInTime, dtes, tkrs, name, tradesUsed, bestInTime, bestOtTime, dayOff, timeAsFloat, toDatabase='no', strategy_name=strategy_name)
+[dtesPnlAggrBest, pnlAggrBest, k] = rschLib.aggregatePnlAndDtes(dtesByTradeBest, pnlByTradeBest)
+rschLib.drawPNL(dtesPnlAggrBest, pnlAggrBest, dtes, strategy_name, showFigure='yes', toDatabase='yes', pnlType='optimalTradeTimePnl')
+rschLib.updateStrategyBackTest(strategy_name, 'bestInTimePoint', int(bestInTime))
+rschLib.updateStrategyBackTest(strategy_name, 'bestOtTimePoint', int(bestOtTime))
+rschLib.updateStrategyBackTest(strategy_name, 'bestInTimeLabel', timeLabels[bestInTime])
+rschLib.updateStrategyBackTest(strategy_name, 'bestOtTimeLabel', timeLabels[bestOtTime])
+rschLib.updateStrategyBackTest(strategy_name, 'rawInTimePoint', int(rawInTime))
+rschLib.updateStrategyBackTest(strategy_name, 'rawOtTimePoint', int(rawOtTime))
+rschLib.updateStrategyBackTest(strategy_name, 'rawInTimeLabel', timeLabels[rawInTime])
+rschLib.updateStrategyBackTest(strategy_name, 'rawOtTimeLabel', timeLabels[rawOtTime])
+
+# analysis of number of trades vs performance
 importlib.reload(rschLib)
 rschLib.pnlVsNumtrades(pnlAggr, numTrades, strategy_name, toDatabase='yes')
 # %load_ext line_profiler
