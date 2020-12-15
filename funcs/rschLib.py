@@ -463,8 +463,11 @@ def getTradesFast(strategy_name, name, tkrs, dtes, maxD, dayTimeAsFloat, R, skip
     Ret = np.vstack((Ret, rTemp))
     lastDateIn = tradesUsed[-1]['dateIn']
     if (skipDump==False):
-        with open(fileName, 'wb') as f:
-            pickle.dump({'tradesUsed':tradesUsed, 'lastDateIn':lastDateIn, 'Ret':Ret}, f)
+        try:
+            with open(fileName, 'wb') as f:
+                pickle.dump({'tradesUsed':tradesUsed, 'lastDateIn':lastDateIn, 'Ret':Ret}, f)
+        except Exception as e:
+            print(str(e))
     updateStrategyGeneratingStatus(strategy_name, '生成进度:35%。交易数据明细载入完成。 '+str(datetime.datetime.now()),35)
     return tradesUsed,Ret
 
