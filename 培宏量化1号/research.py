@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[48]:
+# In[22]:
 
 
 strategy_name ='培宏量化1号'
 off_start = ('close_mtx', 0)
 
 
-# In[49]:
+# In[23]:
 
 
 import sys
@@ -36,21 +36,21 @@ db = rschLib.db_quanLiang()
 dbt = rschLib.db_tinySoftData()
 
 
-# In[50]:
+# In[24]:
 
 
 #参数：
 startDate = 20180101
 
 
-# In[51]:
+# In[25]:
 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
 
-# In[52]:
+# In[26]:
 
 
 plt.rcParams['font.sans-serif'] = [u'SimHei']
@@ -59,7 +59,7 @@ default_dpi = plt.rcParamsDefault['figure.dpi']
 plt.rcParams['figure.dpi'] = default_dpi*1
 
 
-# In[53]:
+# In[27]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -87,7 +87,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[54]:
+# In[28]:
 
 
 v = pd.DataFrame(vol_mtx)
@@ -98,20 +98,22 @@ lb[:,1:]=vol_mtx[:, 1:]/q[:,:-1]
 lb[np.isfinite(lb)==False]=0
 
 
-# In[55]:
+# In[29]:
 
 
 idxTiaoKongGaoKai = np.hstack((np.zeros((open_mtx.shape[0],1))==1,((open_mtx[:,1:] / high_mtx[:,:-1]) - 1 > 0.01)))
 
 
-# In[56]:
+# In[30]:
 
 
 name = list(name)
 tkrs = list(tkrs)
 
 
-# In[57]:
+# In[31]:
+
+
 
 
 Ns = 10 # 取每天量比的前多少名
@@ -142,7 +144,7 @@ for k in range(1,close_mtx.shape[1]):
     
 
 
-# In[58]:
+# In[32]:
 
 
 q = list(db.tkrsInfo.find({},{
@@ -181,7 +183,7 @@ for x in q:
         cmv2020[list(tkrs).index(x['ticker'])]=x['circulateMarketValue20200101']
 
 
-# In[59]:
+# In[33]:
 
 
 cmv_threshold = 100e4
@@ -192,19 +194,19 @@ q = [list(tkrs).index(x) for x in wants]
 idxT = [x in q for x in range(len(tkrs))]
 
 
-# In[60]:
+# In[34]:
 
 
 idxNST = [('ST' in x)==False for x in name]
 
 
-# In[61]:
+# In[35]:
 
 
 startDate = 20180101
 
 
-# In[62]:
+# In[36]:
 
 
 tkrs.index('SH600420')
@@ -212,7 +214,7 @@ idxT[544]
 print(priceLocL[544,-1],preLowL[544,-1], preHighL[544,-1],close_mtx[544,-1])
 
 
-# In[63]:
+# In[37]:
 
 
 priceLocThrsMin = 0.1 # 价格大于近期的priceLocthrsMin位置
@@ -327,7 +329,7 @@ for k in range(k0, close_mtx.shape[1]):
 f.close()
 
 
-# In[64]:
+# In[38]:
 
 
 pnl1 = np.array(pnl1)
@@ -342,13 +344,13 @@ pnl4[np.isfinite(pnl4)==False]=0
 pnl5[np.isfinite(pnl5)==False]=0
 
 
-# In[65]:
+# In[39]:
 
 
 plt.plot(tradesCount)
 
 
-# In[66]:
+# In[40]:
 
 
 plt.plot(dtes2Label(dtesUsed), np.cumsum(pnl1), 'k')
@@ -360,13 +362,13 @@ plt.legend(['第一天入场到第一天收盘', '第一天收盘到第二天开
 plt.grid()
 
 
-# In[67]:
+# In[41]:
 
 
 rschLib.drawPNL(dtesUsed, pnl3+pnl4+pnl5,  dtes, strategy_name, toDatabase='yes')
 
 
-# In[68]:
+# In[42]:
 
 
 rschLib.saveOffStart(strategy_name, off_start)

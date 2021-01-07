@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[32]:
+# In[1]:
 
 
 strategy_name ='鹏晖量化1号'
 off_start = ('close_mtx',0)
 
 
-# In[33]:
+# In[2]:
 
 
 import sys
@@ -34,21 +34,21 @@ np.set_printoptions(formatter={'float_kind': "{:.6f}".format})
 db = rschLib.db_quanLiang()
 
 
-# In[34]:
+# In[3]:
 
 
 #参数：
 startDate = 20190101
 
 
-# In[35]:
+# In[4]:
 
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
 
 
-# In[36]:
+# In[5]:
 
 
 plt.rcParams['font.sans-serif'] = [u'SimHei']
@@ -57,7 +57,7 @@ default_dpi = plt.rcParamsDefault['figure.dpi']
 plt.rcParams['figure.dpi'] = default_dpi*1
 
 
-# In[37]:
+# In[6]:
 
 
 with open(r"d:\pkl\dailyBarMtx.pkl", 'rb+') as f:
@@ -85,7 +85,7 @@ vol_mtx = z['vol_mtx']
 amount_mtx = z['amount_mtx']
 
 
-# In[38]:
+# In[7]:
 
 
 mv = np.zeros(len(tkrs))
@@ -96,7 +96,7 @@ for (i,x) in enumerate(tkrs):
     mv[i] = q['circulateMarketValue']
 
 
-# In[39]:
+# In[8]:
 
 
 #策略部分：
@@ -150,7 +150,7 @@ for k in range(close_mtx.shape[1]-1):
     idxCloseNotSmallerThanIntradayFall[:, k+1] = (close_mtx[:, k+1] / open_mtx[:, k+1] -1) > intradayFall
 
 
-# In[40]:
+# In[9]:
 
 
 def calculateProfit(idxQ, title1, detail='no', detailTrade=8, off=1, startDate=20150101):
@@ -273,7 +273,7 @@ def calculateProfit(idxQ, title1, detail='no', detailTrade=8, off=1, startDate=2
     return r1[dtes>startDate],r2[dtes>startDate],r3[dtes>startDate],r4[dtes>startDate],r5[dtes>startDate],r6[dtes>startDate],r7[dtes>startDate],r8[dtes>startDate], dtes[dtes>startDate]
 
 
-# In[41]:
+# In[10]:
 
 
 #筛选条件
@@ -298,13 +298,13 @@ idxQ = idxOpenHigh & idxNotNewStock & idxPreDayNotBreakHigh & idxNotZhangtingAtC
 #idxQ = idxOpenHigh & idxNotNewStock & idxPreDayNotBreakHigh & idxNotZhangtingAtClose & idxCloseNotSmallerThanIntradayFall & (idxNotZhangtingAtAnyMoment==False)
 
 
-# In[42]:
+# In[11]:
 
 
 [r1, r2, r3, r4, r5,r6,r7,r8,dtesUsed] = calculateProfit(idxQ, '高开买入后回报率变化', off=3, startDate=startDate)
 
 
-# In[43]:
+# In[12]:
 
 
 q = list(db.tkrsInfo.find({},{'ticker':1,'circulateMarketValue20190101':1,'circulateMarketValue20200101':1,'circulateMarketValue':1}))
@@ -321,7 +321,7 @@ for x in q:
         cmv2020[list(tkrs).index(x['ticker'])]=x['circulateMarketValue20200101']
 
 
-# In[44]:
+# In[13]:
 
 
 #只选一部分股票
@@ -353,7 +353,7 @@ for k in range(close_mtx.shape[1]-1):
 rschLib.drawPNL(dtesUsed, r3, dtes, strategy_name, toDatabase='yes')
 
 
-# In[45]:
+# In[14]:
 
 
 #比较视图cmv_threshold取不同值
@@ -375,18 +375,24 @@ rschLib.saveOffStart(strategy_name, off_start)
 rschLib.updateStrategyGeneratingStatus(strategy_name, '生成进度:25%。策略生成准备工作完成。 '+str(datetime.datetime.now()),25)
 
 
-# In[46]:
+# In[15]:
 
 
 plt.plot(np.cumsum(r3c), 'r')
 plt.plot(np.cumsum(r3), 'b')
 
 
-# In[47]:
+# In[ ]:
 
 
 #load_ext line_profiler
 # #%lprun -f getPnl getPnl()
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

@@ -152,11 +152,13 @@ def getPnlFast(r, idxTradable, dtes,tkrs, name, trades, inTime, otTime, dayOff, 
                     else:
                         dot = dtes[jot]+timeAsFloatArr[otTime]
                         dtOt=datetime.datetime.strptime(str(dot), '%Y%m%d.%H%M')+datetime.timedelta(hours=-8)
-                        q2 = dbt.minuteBarStock.find({'ticker':n, 'dateTime':{'$gte':dtOt}},{'open':1}).limit(1)[0]
-                        if q2==None:
+                        tt1 = list(dbt.minuteBarStock.find({'ticker':n, 'dateTime':{'$gte':dtOt}},{'open':1}).limit(1))
+                        if len(tt1)==0:
                             q2={
                                 'open':q1['open']
                             }
+                        else:
+                            q2 = tt1[0]
             bulkList.append(UpdateOne({
                         'strategy_name':strategy_name,
                         'dateIn':t['dateIn'],
@@ -189,7 +191,7 @@ def aggregatePnlAndDtes(dtesPnl, pnl):
         dtesAggr.append(x)
         numTrades.append(np.sum(dtesPnl==x))
         pnlAggr.append(np.mean(pnl[dtesPnl==x]))
-    return dtesAggr,pnlAggr,numTrades, 
+    return dtesAggr,pnlAggr,numTrades
 
 def dtes2Label(dtes):
     return np.array([datetime.datetime.strptime(str(d), '%Y%m%d').date() for d in dtes])
@@ -201,7 +203,7 @@ def saveOffStart(strategy_name, off_start):
 
 def updateStrategyGeneratingStatus(strategy_name, status, statusCode):
     db = db_quanLiang()
-    db.strategyBackTest.update({'strategy_name':strategy_name},{'$set':{'status':status, 'statusCode':statusCode}}, upsert=True)
+    db.strategyBackTest.update({'strategy_name':strategy_name},{'$set':{'status':status, 'statusCode':statusCode, 'lastUpdate':str(datetime.datetime.now())}}, upsert=True)
 
 def updateStrategyPrivacy(strategy_name, privacyStatus):
     db = db_quanLiang()
@@ -363,25 +365,39 @@ def getTradesFast(strategy_name, name, tkrs, dtes, maxD, dayTimeAsFloat, R, skip
     dictdtes = dict(zip(dtes, range(len(dtes))))
     #使用此函数假设是一个策略的历史trade信息一经计算后不会改变。因此如果要改变，需要删除对应pkl文件。
     fileName = "d:\\cachePkl\\" + strategy_name + ".pkl"
+    
     if os.path.exists(fileName):
-        with open(fileName, 'rb+') as f:
-            pkl = pickle.load(f)
-        tradesUsed = pkl['tradesUsed']
-        Ret = pkl['Ret']
-        lastDateWithFullData = dtes[dictdtes[pkl['lastDateIn']]-maxD+1]  #比如maxD=2, 得到的trades的日期里，最后完整的数据只到maxD-1天前，所以完整数据标记只到lastDate-(maxD-1)天，之后的记录不能存入cache
-        flagKicked=-1
-        while (tradesUsed[-1]['dateIn']>lastDateWithFullData):
-            if (flagKicked!=tradesUsed[-1]['dateIn']):
-                print('从tradesUsed cache中踢出',tradesUsed[-1]['dateIn'])
-                flagKicked = tradesUsed[-1]['dateIn']
-            tradesUsed.pop()
-            Ret = np.delete(Ret, -1, 0)
+        readFile = True
+        try:
+            with open(fileName, 'rb+') as f:
+                pkl = pickle.load(f)
+            tradesUsed = pkl['tradesUsed']
+            Ret = np.array(pkl['Ret'])
+            lastDateWithFullData = dtes[dictdtes[pkl['lastDateIn']]-maxD+1]  #比如maxD=2, 得到的trades的日期里，最后完整的数据只到maxD-1天前，所以完整数据标记只到lastDate-(maxD-1)天，之后的记录不能存入cache
+            flagKicked=-1
+            totk=0
+            while (tradesUsed[-1]['dateIn']>lastDateWithFullData):
+                if (flagKicked!=tradesUsed[-1]['dateIn']):
+                    print('从tradesUsed cache中踢出',tradesUsed[-1]['dateIn'])
+                    flagKicked = tradesUsed[-1]['dateIn']
+                tradesUsed.pop()
+                totk=totk+1
+            if totk!=0:
+                print(totk)
+                Ret =Ret[:-totk,:]
+        except Exception as e:
+            readFile = False
+            print(str(e))
     else:
+        readFile = False
+    if readFile == False:
         Ret = np.array([]).reshape((0, len(dayTimeAsFloat)))
         tradesUsed = []
         lastDateWithFullData = 0
     RetTemp = []
     trades = list(db.strategyBackTestTrades.find({'strategy_name':strategy_name, 'dateIn':{'$gt':int(lastDateWithFullData)}},no_cursor_timeout=True).sort([('dateIn',1)]))
+    if len(trades)>2e5:
+        return [],[] # 如果记录超过1百万条，暂时不处理标签
     print(strategy_name, '最后完整日期',int(lastDateWithFullData),'新增记录',len(trades),'总记录',len(tradesUsed))
     lastDateIn = trades[-1]['dateIn']
     # 如果存在cache,则从cache读取记录，然后处理增量。

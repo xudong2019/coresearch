@@ -79,14 +79,8 @@ def runStrategy():
     print(names)
 
 
-# In[ ]:
+# In[5]:
 
 
 runStrategy()
-
-
-# In[11]:
-
-
-1+1
 

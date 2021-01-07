@@ -12,7 +12,7 @@ maxD = 3
 offStart = ('open_mtx',0)
 
 
-# In[3]:
+# In[2]:
 
 
 import sys
@@ -108,4 +108,16 @@ importlib.reload(rschLib)
 rschLib.pnlVsNumtrades(pnlAggr, numTrades, strategy_name, toDatabase='yes')
 # %load_ext line_profiler
 # #%lprun -f getPnl getPnl()
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 

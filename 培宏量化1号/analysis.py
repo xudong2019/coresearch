@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[8]:
 
 
 strategy_name = '培宏量化1号'
@@ -12,7 +12,7 @@ maxD = 4
 offStart = ('close_mtx',0)
 
 
-# In[19]:
+# In[9]:
 
 
 import sys
@@ -110,8 +110,20 @@ rschLib.pnlVsNumtrades(pnlAggr, numTrades, strategy_name, toDatabase='yes')
 # #%lprun -f getPnl getPnl()
 
 
-# In[5]:
+# In[ ]:
 
 
 #%lprun -f getPnl getPnl()
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 
